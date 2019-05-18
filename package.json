@@ -1,0 +1,26 @@
+{
+  "name": "pricestf",
+  "version": "1.0.0",
+  "description": "A nodejs wrapper for PricesTF",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint ./",
+    "release": "np --no-cleanup --no-publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pricestf/node-pricestf.git"
+  },
+  "author": "Nicklas Marc Pedersen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pricestf/node-pricestf/issues"
+  },
+  "homepage": "https://github.com/pricestf/node-pricestf#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-google": "^0.13.0",
+    "nodemon": "^1.19.0"
+  }
+}
