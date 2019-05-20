@@ -8,24 +8,15 @@ function PricesTF (options) {
     this.token = options.token;
     this.currency = options.currency || 'USD';
 
-    this.socket = require('./lib/socket')(this.token);
     this.retryAfter = null;
-
-    this.socket.on('authenticated', () => {
-        this.authenticated = true;
-    });
-
-    this.socket.on('unauthorized', () => {
-        this.authenticated = false;
-    });
 }
 
 PricesTF.prototype.init = function (callback) {
-    if (this.socket.connected && this.authenticated) {
-        return callback(null);
-    } else if (this.authenticated === false) {
-        return callback(new Error('Invalid token'));
+    if (this.socket !== undefined) {
+        this.socket.destroy();
     }
+
+    this.socket = require('./lib/socket')(this.token);
 
     this.socket.once('authenticated', authenticated);
     this.socket.once('unauthorized', unauthorized);
