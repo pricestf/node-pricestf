@@ -2,6 +2,8 @@ module.exports = PricesTF;
 
 require('util').inherits(PricesTF, require('events').EventEmitter);
 
+const moment = require('moment');
+
 function PricesTF (options) {
     options = options || {};
 
@@ -17,6 +19,11 @@ PricesTF.prototype.init = function (callback) {
     }
 
     this.socket = require('./lib/socket')(this.token);
+
+    this.socket.on('ratelimit', (ratelimit) => {
+        ratelimit.reset = moment.unix(ratelimit.reset);
+        this.emit('ratelimit', ratelimit);
+    });
 
     this.socket.once('authenticated', authenticated);
     this.socket.once('unauthorized', unauthorized);
