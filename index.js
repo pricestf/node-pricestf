@@ -8,8 +8,30 @@ function PricesTF (options) {
     this.token = options.token;
     this.currency = options.currency || 'USD';
 
+    this.socket = require('./lib/socket')(this.token);
     this.retryAfter = null;
 }
+
+PricesTF.prototype.init = function (callback) {
+    this.socket.once('authenticated', authenticated);
+    this.socket.once('unauthorized', unauthorized);
+
+    const self = this;
+
+    function authenticated () {
+        self.socket.removeListener('unauthorized', unauthorized);
+        callback(null);
+    }
+
+    function unauthorized () {
+        self.socket.removeListener('authenticated', authenticated);
+        callback(new Error('Invalid token'));
+    }
+};
+
+PricesTF.prototype.shutdown = function () {
+    this.socket.destroy();
+};
 
 require('./lib/request');
 require('./lib/http');
