@@ -1,5 +1,4 @@
 {
-  "plugins": ["babel"],
   "extends": ["eslint:recommended", "google"],
   "env": {
     "node": true,
