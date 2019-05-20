@@ -23,23 +23,21 @@ PricesTF.prototype.init = function (callback) {
 
     const self = this;
 
-    let called = false;
-
-    setTimeout(() => {
-        if (!this.socket.connected && !called) {
+    const timeout = setTimeout(() => {
+        if (!this.socket.connected) {
             self.socket.destroy();
             callback(new Error('Failed to connect / took too long to the socket server'));
         }
     }, 5000);
 
     function authenticated () {
-        called = true;
+        clearInterval(timeout);
         self.socket.removeListener('unauthorized', unauthorized);
         callback(null);
     }
 
     function unauthorized () {
-        called = true;
+        clearInterval(timeout);
         self.socket.destroy();
         callback(new Error('Invalid token'));
     }
