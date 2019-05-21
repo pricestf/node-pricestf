@@ -7,6 +7,7 @@ const moment = require('moment');
 function PricesTF (options) {
     options = options || {};
 
+    this.ready = false;
     this.token = options.token;
     this.currency = options.currency || 'USD';
 
@@ -15,6 +16,8 @@ function PricesTF (options) {
 }
 
 PricesTF.prototype.init = function (callback) {
+    this.ready = false;
+
     if (this.socket !== undefined) {
         this.socket.destroy();
     }
@@ -42,6 +45,7 @@ PricesTF.prototype.init = function (callback) {
         clearTimeout(timeout);
         self.socket.removeListener('unauthorized', unauthorized);
         self.socket.removeListener('disconnect', unauthorized);
+        self.ready = true;
         callback(null);
     }
 
@@ -63,20 +67,6 @@ PricesTF.prototype.init = function (callback) {
 
 PricesTF.prototype.shutdown = function () {
     this.socket.destroy();
-};
-
-PricesTF.prototype._canMakeRequest = function (consume, callback) {
-    if (!this.ratelimit) {
-        return true;
-    }
-
-    const canAfford = this.ratelimit.remaining - consume >= 0;
-
-    if (!canAfford) {
-        callback(new Error('Can\'t afford requesting this endpoint'));
-    }
-
-    return canAfford;
 };
 
 PricesTF.prototype._ratelimit = function (time, ratelimit) {
