@@ -11,6 +11,7 @@ function PricesTF (options) {
     this.currency = options.currency || 'USD';
 
     this.retryAfter = null;
+    this.ratelimit = null;
 }
 
 PricesTF.prototype.init = function (callback) {
@@ -21,12 +22,12 @@ PricesTF.prototype.init = function (callback) {
     this.socket = require('./lib/socket')(this.token);
 
     this.socket.on('ratelimit', (ratelimit) => {
-        ratelimit.reset = moment.unix(ratelimit.reset);
-        this.emit('ratelimit', ratelimit);
+        this._ratelimit(moment(), ratelimit);
     });
 
     this.socket.once('authenticated', authenticated);
     this.socket.once('unauthorized', unauthorized);
+    this.socket.once('disconnect', disconnect);
 
     const self = this;
 
@@ -38,20 +39,54 @@ PricesTF.prototype.init = function (callback) {
     }, 5000);
 
     function authenticated () {
-        clearInterval(timeout);
+        clearTimeout(timeout);
         self.socket.removeListener('unauthorized', unauthorized);
+        self.socket.removeListener('disconnect', unauthorized);
         callback(null);
     }
 
     function unauthorized () {
-        clearInterval(timeout);
+        clearTimeout(timeout);
         self.socket.destroy();
         callback(new Error('Invalid token'));
+    }
+
+    function disconnect () {
+        if (self.ratelimit.remaining === 0) {
+            // The socket server disconnected us because we are ratelimited
+            clearTimeout(timeout);
+            self.socket.destroy();
+            callback(new Error('Too Many Requests'));
+        }
     }
 };
 
 PricesTF.prototype.shutdown = function () {
     this.socket.destroy();
+};
+
+PricesTF.prototype._canMakeRequest = function (consume, callback) {
+    if (!this.ratelimit) {
+        return true;
+    }
+
+    const canAfford = this.ratelimit.remaining - consume >= 0;
+
+    if (!canAfford) {
+        callback(new Error('Can\'t afford requesting this endpoint'));
+    }
+
+    return canAfford;
+};
+
+PricesTF.prototype._ratelimit = function (time, ratelimit) {
+    if (!this.ratelimit || time > this.ratelimit.time) {
+        // Only update and emit the ratelimit if it is the current one
+        ratelimit.reset = moment.unix(ratelimit.reset);
+        ratelimit.time = time;
+        this.ratelimit = ratelimit;
+        this.emit('ratelimit', ratelimit);
+    }
 };
 
 require('./lib/request');
