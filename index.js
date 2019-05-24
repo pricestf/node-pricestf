@@ -46,6 +46,7 @@ PricesTF.prototype.init = function (callback) {
         self.socket.removeListener('unauthorized', unauthorized);
         self.socket.removeListener('disconnect', unauthorized);
         self.ready = true;
+        self.emit('ready', true);
         callback(null);
     }
 
