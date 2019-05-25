@@ -5,6 +5,13 @@ require('util').inherits(PricesTF, require('events').EventEmitter);
 const async = require('async');
 const moment = require('moment');
 
+/**
+ * PricesTF constructor
+ * @param {Object} options An object of options
+ * @param {String} [options.token] PricesTF access token
+ * @param {Array<String>} [options.sources] A list of price sources to keep cached. Default `['bptf']`
+ * @param {Function} [options.filter] A filter called for every item to see if it should be cached or not
+ */
 function PricesTF (options) {
     options = options || {};
 
@@ -21,6 +28,10 @@ function PricesTF (options) {
     this.ratelimit = null;
 }
 
+/**
+ * Initializes the module
+ * @param {Function} callback Function to call when done
+ */
 PricesTF.prototype.init = function (callback) {
     this.ready = false;
 
@@ -61,10 +72,20 @@ PricesTF.prototype.init = function (callback) {
     });
 };
 
+/**
+ * Default filter function
+ * @param {String} sku SKU of the item
+ * @return {Boolean}
+ */
 function defaultFilter (sku) {
     return true;
 }
 
+/**
+ * Function used to filter and populate the cache
+ * @param {Object} price
+ * @param {Boolean} [emit] If the price should be emitted
+ */
 PricesTF.prototype._newPrice = function (price, emit) {
     const keep = this.sources.indexOf(price.source) !== -1 && this.filter(price.sku);
     if (keep) {
@@ -83,6 +104,10 @@ PricesTF.prototype._newPrice = function (price, emit) {
     }
 };
 
+/**
+ * Initializes the socket connection by connecting and authenticating
+ * @param {Function} callback Function to call when done
+ */
 PricesTF.prototype._socketInit = function (callback) {
     if (this.socket !== undefined) {
         this.socket.destroy();
@@ -130,13 +155,24 @@ PricesTF.prototype._socketInit = function (callback) {
     }
 };
 
+/**
+ * Gracefully stop the PricesTF instance
+ */
 PricesTF.prototype.shutdown = function () {
     this.socket.destroy();
 };
 
+/**
+ * Function called every time a ratelimit is seen
+ * @param {Number} time
+ * @param {Object} ratelimit
+ * @param {Number} ratelimit.current Current consumed points
+ * @param {Number} ratelimit.remaining Remaining points
+ * @param {Number} ratelimit.reset Time when the ratelimit is reset
+ */
 PricesTF.prototype._ratelimit = function (time, ratelimit) {
     if (!this.ratelimit || time > this.ratelimit.time) {
-        // Only update and emit the ratelimit if it is the current one
+        // Only update and emit the ratelimit if it is the newest one
         ratelimit.reset = moment.unix(ratelimit.reset);
         ratelimit.time = time;
         this.ratelimit = ratelimit;
