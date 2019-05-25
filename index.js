@@ -65,10 +65,8 @@ PricesTF.prototype.init = function (callback) {
             });
 
             this.socket.on('item', (item) => {
-                if (!this.items.indexOf(item.sku)) {
-                    this.items.push(item.sku);
-                    this.emit('item', item);
-                }
+                this.items[item.sku] = item.name;
+                this.emit('item', item);
             });
 
             callback(null);
