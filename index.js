@@ -18,7 +18,7 @@ function PricesTF (options) {
     this.ready = false;
     this.token = options.token;
     this.currency = 'USD';
-    this.sources = options.sources || ['bptf'];
+    this.sources = options.sources !== undefined ? options.sources : ['bptf'];
     this.filter = options.filter || defaultFilter;
 
     this.items = [];
@@ -44,6 +44,10 @@ PricesTF.prototype.init = function (callback) {
 
         async.parallel([
             (callback) => {
+                if (this.sources.length === 0) {
+                    return callback(null);
+                }
+
                 this.getPricelist(this.sources.join(','), callback);
             },
             (callback) => {
