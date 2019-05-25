@@ -2,6 +2,7 @@ module.exports = PricesTF;
 
 require('util').inherits(PricesTF, require('events').EventEmitter);
 
+const async = require('async');
 const moment = require('moment');
 
 function PricesTF (options) {
@@ -9,7 +10,12 @@ function PricesTF (options) {
 
     this.ready = false;
     this.token = options.token;
-    this.currency = options.currency || 'USD';
+    this.currency = 'USD';
+    this.sources = options.sources || ['bptf'];
+    this.filter = options.filter || defaultFilter;
+
+    this.items = [];
+    this.prices = {};
 
     this.retryAfter = null;
     this.ratelimit = null;
@@ -18,6 +24,66 @@ function PricesTF (options) {
 PricesTF.prototype.init = function (callback) {
     this.ready = false;
 
+    this._socketInit((err) => {
+        if (err) {
+            return callback(err);
+        }
+
+        this.ready = true;
+
+        async.parallel([
+            (callback) => {
+                this.getPricelist(this.sources.join(','), callback);
+            },
+            (callback) => {
+                this.getSchema(callback);
+            }
+        ], (err) => {
+            if (err) {
+                return callback(err);
+            }
+
+            this.emit('ready');
+
+            this.socket.on('price', (price) => {
+                this._newPrice(price, true);
+            });
+
+            this.socket.on('item', (item) => {
+                if (!this.items.indexOf(item.sku)) {
+                    this.items.push(item.sku);
+                    this.emit('item', item);
+                }
+            });
+
+            callback(null);
+        });
+    });
+};
+
+function defaultFilter (sku) {
+    return true;
+}
+
+PricesTF.prototype._newPrice = function (price, emit) {
+    const keep = this.sources.indexOf(price.source) !== -1 && this.filter(price.sku);
+    if (keep) {
+        if (!this.prices[price.source]) {
+            this.prices[price.source] = {};
+        }
+
+        this.prices[price.source][price.sku] = {
+            time: price.time === undefined ? moment() : moment.unix(price.time),
+            price: price.price
+        };
+
+        if (emit) {
+            this.emit('price', price);
+        }
+    }
+};
+
+PricesTF.prototype._socketInit = function (callback) {
     if (this.socket !== undefined) {
         this.socket.destroy();
     }
@@ -45,8 +111,6 @@ PricesTF.prototype.init = function (callback) {
         clearTimeout(timeout);
         self.socket.removeListener('unauthorized', unauthorized);
         self.socket.removeListener('disconnect', unauthorized);
-        self.ready = true;
-        self.emit('ready', true);
         callback(null);
     }
 
@@ -57,7 +121,7 @@ PricesTF.prototype.init = function (callback) {
     }
 
     function disconnect () {
-        if (self.ratelimit.remaining === 0) {
+        if (self.ratelimit && self.ratelimit.remaining === 0) {
             // The socket server disconnected us because we are ratelimited
             clearTimeout(timeout);
             self.socket.destroy();
