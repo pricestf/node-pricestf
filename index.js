@@ -94,6 +94,7 @@ PricesTF.prototype._newPrice = function (price, emit) {
         }
 
         this.prices[price.source][price.sku] = {
+            name: price.name,
             time: price.time === undefined ? moment() : moment.unix(price.time),
             price: price.price
         };
