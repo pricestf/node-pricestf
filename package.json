@@ -19,7 +19,7 @@
   "homepage": "https://github.com/pricestf/node-pricestf#readme",
   "dependencies": {
     "@nicklason/request-retry": "^1.1.1",
-    "async": "^3.0.0",
+    "async": "^3.0.1",
     "events": "^3.0.0",
     "lodash": "^4.17.11",
     "moment": "^2.24.0",
@@ -29,6 +29,6 @@
   "devDependencies": {
     "eslint": "^5.16.0",
     "eslint-config-google": "^0.13.0",
-    "nodemon": "^1.19.0"
+    "nodemon": "^1.19.1"
   }
 }
