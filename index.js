@@ -4,6 +4,7 @@ require('util').inherits(PricesTF, require('events').EventEmitter);
 
 const async = require('async');
 const moment = require('moment');
+const array = require('lodash/array');
 
 /**
  * PricesTF constructor
@@ -21,12 +22,48 @@ function PricesTF (options) {
     this.sources = options.sources !== undefined ? options.sources : ['bptf'];
     this.filter = options.filter || defaultFilter;
 
-    this.items = [];
+    this.schema = {};
     this.prices = {};
 
     this.retryAfter = null;
     this.ratelimit = null;
 }
+
+/**
+ * Parses prices and sets it
+ * @param {Object} prices
+ */
+PricesTF.prototype.setPrices = function (prices) {
+    for (const source in prices) {
+        if (!prices.hasOwnProperty(source) || this.sources.indexOf(source) !== -1) {
+            continue;
+        }
+
+        for (const sku in prices[source]) {
+            if (!prices[source].hasOwnProperty(sku)) {
+                continue;
+            }
+
+            const entry = prices[source][sku];
+            entry.time = moment(entry.time);
+            for (let i = 0; i < prices[source].length; i++) {
+                const entry = prices[source][i];
+                entry.time = moment(entry.time);
+                prices[source][i] = entry;
+            }
+        }
+    }
+
+    this.prices = prices;
+};
+
+/**
+ * Sets the schema
+ * @param {Object} schema
+ */
+PricesTF.prototype.setSchema = function (schema) {
+    this.schema = schema;
+};
 
 /**
  * Initializes the module
@@ -35,7 +72,7 @@ function PricesTF (options) {
 PricesTF.prototype.init = function (callback) {
     this.ready = false;
 
-    this._socketInit((err) => {
+    this._socketSetup((err) => {
         if (err) {
             return callback(err);
         }
@@ -48,9 +85,19 @@ PricesTF.prototype.init = function (callback) {
                     return callback(null);
                 }
 
-                this.getPricelist(this.sources.join(','), callback);
+                const sources = Object.keys(this.prices);
+                const difference = array.difference(this.sources, sources);
+                if (array.difference(this.sources, sources).length === 0) {
+                    return callback(null);
+                }
+
+                this.getPricelist(difference.join(','), callback);
             },
             (callback) => {
+                if (Object.keys(this.schema).length !== 0) {
+                    return callback(null);
+                }
+
                 this.getSchema(callback);
             }
         ], (err) => {
@@ -65,13 +112,21 @@ PricesTF.prototype.init = function (callback) {
             });
 
             this.socket.on('item', (item) => {
-                this.items[item.sku] = item.name;
+                this.schema[item.sku] = item.name;
                 this.emit('item', item);
             });
 
             callback(null);
         });
     });
+};
+
+
+/**
+ * Gracefully stop the PricesTF instance
+ */
+PricesTF.prototype.shutdown = function () {
+    this.socket.destroy();
 };
 
 /**
@@ -111,7 +166,7 @@ PricesTF.prototype._newPrice = function (price, emit) {
  * Initializes the socket connection by connecting and authenticating
  * @param {Function} callback Function to call when done
  */
-PricesTF.prototype._socketInit = function (callback) {
+PricesTF.prototype._socketSetup = function (callback) {
     if (this.socket !== undefined) {
         this.socket.destroy();
     }
@@ -156,13 +211,6 @@ PricesTF.prototype._socketInit = function (callback) {
             callback(new Error('Too Many Requests'));
         }
     }
-};
-
-/**
- * Gracefully stop the PricesTF instance
- */
-PricesTF.prototype.shutdown = function () {
-    this.socket.destroy();
 };
 
 /**
