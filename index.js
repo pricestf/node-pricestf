@@ -35,8 +35,12 @@ function PricesTF (options) {
  */
 PricesTF.prototype.setPrices = function (prices) {
     for (const source in prices) {
-        if (!prices.hasOwnProperty(source) || this.sources.indexOf(source) !== -1) {
+        if (!prices.hasOwnProperty(source) || this.sources.indexOf(source) === -1) {
             continue;
+        }
+
+        if (!this.prices.hasOwnProperty(source)) {
+            this.prices[source] = {};
         }
 
         for (const sku in prices[source]) {
@@ -46,15 +50,9 @@ PricesTF.prototype.setPrices = function (prices) {
 
             const entry = prices[source][sku];
             entry.time = moment(entry.time);
-            for (let i = 0; i < prices[source].length; i++) {
-                const entry = prices[source][i];
-                entry.time = moment(entry.time);
-                prices[source][i] = entry;
-            }
+            this.prices[source][sku] = entry;
         }
     }
-
-    this.prices = prices;
 };
 
 /**
