@@ -77,6 +77,9 @@ PricesTF.prototype.init = function (callback) {
 
         this.ready = true;
 
+        const priceSources = Object.keys(this.prices);
+        const hasSchema = Object.keys(this.schema).length !== 0;
+
         async.parallel([
             (callback) => {
                 if (this.sources.length === 0) {
@@ -89,7 +92,7 @@ PricesTF.prototype.init = function (callback) {
                     return callback(null);
                 }
 
-                this.getPricelist(difference.join(','), callback);
+                this.getPricelist(difference, callback);
             },
             (callback) => {
                 if (Object.keys(this.schema).length !== 0) {
@@ -101,6 +104,16 @@ PricesTF.prototype.init = function (callback) {
         ], (err) => {
             if (err) {
                 return callback(err);
+            }
+
+            if (priceSources.length !== 0) {
+                // Makes sure that the pricelist is up to date
+                this.getPricelist(priceSources, function () {});
+            }
+
+            if (hasSchema) {
+                // Updates the schema
+                this.getSchema(function () {});
             }
 
             this.emit('ready');
@@ -118,7 +131,6 @@ PricesTF.prototype.init = function (callback) {
         });
     });
 };
-
 
 /**
  * Gracefully stop the PricesTF instance
@@ -148,13 +160,17 @@ PricesTF.prototype._newPrice = function (price, emit) {
             this.prices[price.source] = {};
         }
 
+        const old = this.prices[price.source][price.sku];
+        const time = price.time === undefined ? moment() : moment.unix(price.time);
+
         this.prices[price.source][price.sku] = {
             name: price.name,
-            time: price.time === undefined ? moment() : moment.unix(price.time),
+            time: time,
             price: price.price
         };
 
-        if (emit) {
+        // Emit the price if it is new, or the times don't match
+        if (emit && (old === undefined || old.time < time)) {
             this.emit('price', price);
         }
     }
