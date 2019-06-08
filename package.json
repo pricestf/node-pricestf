@@ -1,6 +1,6 @@
 {
   "name": "pricestf",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "A nodejs wrapper for PricesTF",
   "main": "index.js",
   "scripts": {
