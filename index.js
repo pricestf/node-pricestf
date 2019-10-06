@@ -166,7 +166,7 @@ PricesTF.prototype._newPrice = function (price, emit) {
         this.prices[price.source][price.sku] = {
             name: price.name,
             time: time,
-            price: price.price
+            price: price.sell
         };
 
         // Emit the price if it is new, or the times don't match
